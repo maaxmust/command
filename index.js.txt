@@ -1,0 +1,8 @@
+const express = require('express');
+const app = express();
+
+// Webseite zeigt "Programm läuft!"
+app.get('/', (req, res) => res.send('Programm läuft!'));
+
+// Server startet auf Port 3000
+app.listen(3000, () => console.log('Server läuft'));
