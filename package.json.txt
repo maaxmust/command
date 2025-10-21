@@ -1,11 +1,12 @@
 {
-  "name": "mein-bot",
+  "name": "nutzenlos-api",
   "version": "1.0.0",
+  "description": "Eine einfache API, die den Zufallswert für einen User berechnet",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
     "express": "^4.17.1"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }
