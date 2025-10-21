@@ -1,8 +1,31 @@
 const express = require('express');
 const app = express();
+const port = process.env.PORT || 3000;
 
-// Webseite zeigt "Programm läuft!"
-app.get('/', (req, res) => res.send('Programm läuft!'));
+// Funktion, die pro Benutzer und Tag einen festen Zufallswert zwischen 1 und 100 generiert
+function generateDailyValue(username) {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const normalizedUsername = username.toLowerCase();
+    const seed = `${normalizedUsername}-${today}`;
 
-// Server startet auf Port 3000
-app.listen(3000, () => console.log('Server läuft'));
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        hash = (hash << 5) - hash + seed.charCodeAt(i);
+    }
+
+    // Wert zwischen 1 und 100
+    return Math.abs(hash % 100) + 1;
+}
+
+// API-Route: /nutzlos/USERNAME
+app.get('/nutzlos/:username', (req, res) => {
+    const username = req.params.username;
+    const value = generateDailyValue(username);
+
+    res.send(`${username}, du bist heute zu ${value}% nutzlos`); // Punkt entfernt
+});
+
+// Server starten
+app.listen(port, () => {
+    console.log(`Server läuft auf Port ${port}`);
+});
