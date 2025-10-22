@@ -1,7 +1,6 @@
 {
   "name": "multi-api",
   "version": "1.0.0",
-  "description": "Kombinierte API: Nutzlos-Wert & Wetter (Erde, Mars, Planeten)",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
