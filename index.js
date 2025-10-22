@@ -4,7 +4,7 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const apiKey = 'c335251d781d377a5c8e9c94e3ea7c10'; // Dein OpenWeatherMap-Key
+const apiKey = 'c335251d781d377a5c8e9c94e3ea7c10';
 
 app.use(cors());
 
@@ -29,10 +29,15 @@ app.get('/nutzlos/:username', (req, res) => {
 });
 
 /* ---------------- WETTER-COMMAND ---------------- */
+// Großschreibt und korrigiert deutsche Umlaute
 function normalizeCityName(city) {
     if (!city || typeof city !== 'string') return city;
 
-    const map = { 'ae': 'ä', 'oe': 'ö', 'ue': 'ü', 'Ae': 'Ä', 'Oe': 'Ö', 'Ue': 'Ü', 'ss': 'ß' };
+    const map = {
+        'ae': 'ä', 'oe': 'ö', 'ue': 'ü',
+        'Ae': 'Ä', 'Oe': 'Ö', 'Ue': 'Ü', 'ss': 'ß'
+    };
+
     let normalized = city;
     for (const [key, value] of Object.entries(map)) {
         const regex = new RegExp(key, 'g');
@@ -46,40 +51,36 @@ function normalizeCityName(city) {
         .join(' ');
 }
 
-// Alle gängigen OpenWeatherMap-Wetterbeschreibungen mit Emojis
+// Alle gängigen OpenWeatherMap-Beschreibungen auf Deutsch mit passenden Emojis
 function getWeatherEmoji(description) {
     const text = description.toLowerCase();
 
     const map = [
-        { keywords: ['klarer himmel', 'sonnig', 'clear sky', 'sunny'], emoji: '☀️ Sonnig' },
-        { keywords: ['few clouds', 'leicht bewölkt'], emoji: '🌤️ Leicht bewölkt' },
-        { keywords: ['scattered clouds', 'bewölkt'], emoji: '🌥️ Bewölkt' },
-        { keywords: ['broken clouds', 'stark bewölkt'], emoji: '☁️ Stark bewölkt' },
-        { keywords: ['overcast clouds', 'bedeckt', 'überwiegend bewölkt'], emoji: '☁️ Bedeckt' },
-        { keywords: ['light rain', 'leichter regen', 'drizzle', 'nieselregen'], emoji: '🌦️ Leichter Regen' },
-        { keywords: ['moderate rain', 'moderater regen'], emoji: '🌧️ Mäßiger Regen' },
-        { keywords: ['heavy intensity rain', 'starker regen'], emoji: '🌧️ Starker Regen' },
-        { keywords: ['very heavy rain', 'extreme rain', 'extremer regen'], emoji: '🌧️ Extrem starker Regen' },
-        { keywords: ['freezing rain', 'gefriereneder regen'], emoji: '🌨️ Gefrierender Regen' },
-        { keywords: ['light snow', 'leichter schnee'], emoji: '❄️ Leichter Schnee' },
-        { keywords: ['snow', 'schnee'], emoji: '❄️ Schnee' },
-        { keywords: ['heavy snow', 'starker schnee'], emoji: '❄️ Starker Schnee' },
-        { keywords: ['sleet', 'schneeregen'], emoji: '🌨️ Schneeregen' },
-        { keywords: ['shower snow', 'schauer schnee'], emoji: '🌨️ Schneeschauer' },
-        { keywords: ['thunderstorm', 'gewitter'], emoji: '⛈️ Gewitter' },
-        { keywords: ['light thunderstorm', 'leichte gewitter'], emoji: '⛈️ Leichtes Gewitter' },
-        { keywords: ['thunderstorm with rain', 'gewitterschauer'], emoji: '⛈️ Gewitter mit Regen' },
-        { keywords: ['heavy thunderstorm', 'starker gewitterschauer'], emoji: '⛈️ Starkes Gewitter' },
-        { keywords: ['mist', 'fog', 'nebel', 'dunst'], emoji: '🌫️ Nebel' },
-        { keywords: ['smoke', 'rauch'], emoji: '💨 Rauch' },
+        { keywords: ['klar', 'sonnig'], emoji: '☀️ Sonnig' },
+        { keywords: ['leicht bewölkt'], emoji: '🌤️ Leicht bewölkt' },
+        { keywords: ['bewölkt'], emoji: '🌥️ Bewölkt' },
+        { keywords: ['stark bewölkt', 'überwiegend bewölkt', 'bedeckt'], emoji: '☁️ Bedeckt' },
+        { keywords: ['leichter regen', 'nieselregen', 'drizzle'], emoji: '🌦️ Leichter Regen' },
+        { keywords: ['moderater regen'], emoji: '🌧️ Mäßiger Regen' },
+        { keywords: ['starker regen', 'heavy intensity rain'], emoji: '🌧️ Starker Regen' },
+        { keywords: ['extremer regen', 'very heavy rain', 'extreme rain'], emoji: '🌧️ Extrem starker Regen' },
+        { keywords: ['gefriereneder regen', 'freezing rain'], emoji: '🌨️ Gefrierender Regen' },
+        { keywords: ['leichter schnee', 'light snow'], emoji: '❄️ Leichter Schnee' },
+        { keywords: ['schnee', 'snow'], emoji: '❄️ Schnee' },
+        { keywords: ['starker schnee', 'heavy snow'], emoji: '❄️ Starker Schnee' },
+        { keywords: ['schneeregen', 'sleet'], emoji: '🌨️ Schneeregen' },
+        { keywords: ['schneeschauer', 'shower snow'], emoji: '🌨️ Schneeschauer' },
+        { keywords: ['gewitter', 'thunderstorm', 'light thunderstorm'], emoji: '⛈️ Gewitter' },
+        { keywords: ['nebel', 'fog', 'mist', 'dunst'], emoji: '🌫️ Nebel' },
+        { keywords: ['rauch', 'smoke'], emoji: '💨 Rauch' },
         { keywords: ['sand', 'sandig'], emoji: '🏜️ Sandig' },
-        { keywords: ['dust', 'staub'], emoji: '💨 Staubig' },
-        { keywords: ['volcanic ash', 'vulkanasche'], emoji: '🌋 Vulkanasche' },
-        { keywords: ['squalls', 'böen'], emoji: '🌬️ Böen' },
+        { keywords: ['staub', 'dust'], emoji: '💨 Staubig' },
+        { keywords: ['vulkanasche', 'volcanic ash'], emoji: '🌋 Vulkanasche' },
+        { keywords: ['böen', 'squalls'], emoji: '🌬️ Böen' },
         { keywords: ['tornado'], emoji: '🌪️ Tornado' },
         { keywords: ['wind', 'breeze', 'gust'], emoji: '🌬️ Windig' },
-        { keywords: ['storm', 'sturm', 'orkan'], emoji: '🌪️ Sturm' },
-        { keywords: ['rainbow', 'regenbogen'], emoji: '🌈 Regenbogen' }
+        { keywords: ['sturm', 'orkan', 'storm'], emoji: '🌪️ Sturm' },
+        { keywords: ['regenbogen'], emoji: '🌈 Regenbogen' }
     ];
 
     for (const item of map) {
@@ -88,7 +89,8 @@ function getWeatherEmoji(description) {
         }
     }
 
-    return ''; // Fallback leer, wir zeigen nur Temperatur
+    // Fallback: leer lassen, nur Temperaturbeschreibung anzeigen
+    return '';
 }
 
 // Temperaturbeschreibung mit Emojis
@@ -125,9 +127,11 @@ app.get('/weather/:city', async (req, res) => {
     const displayCity = normalizeCityName(rawCity);
     const encodedCity = encodeURIComponent(rawCity);
 
+    let timeout; // fix für ReferenceError
+
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        timeout = setTimeout(() => controller.abort(), 5000);
 
         const response = await axios.get(
             `https://api.openweathermap.org/data/2.5/weather?q=${encodedCity}&appid=${apiKey}&units=metric&lang=de`,
@@ -140,12 +144,13 @@ app.get('/weather/:city', async (req, res) => {
         const tempC = Math.round(weather.main.temp);
         const description = weather.weather[0].description;
         const emojiText = getWeatherEmoji(description);
-        const tempText = getTemperatureDescription(tempC);
+        const tempDesc = getTemperatureDescription(tempC);
 
-        const combinedText = emojiText ? `${emojiText}, ${tempText}` : tempText;
-        res.send(`In ${displayCity} ist es aktuell ${tempC}°C (${combinedText})`);
+        const weatherOutput = emojiText ? `${emojiText}, ${tempDesc}` : `${tempDesc}`;
+
+        res.send(`In ${displayCity} ist es aktuell ${tempC}°C (${weatherOutput})`);
     } catch (error) {
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         res.send(getRandomError(displayCity));
     }
 });
