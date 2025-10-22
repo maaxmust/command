@@ -5,12 +5,13 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Dein Wetter-API-Key
+// Dein Wetter-API-Key (direkt im Code)
 const apiKey = '9f2a7dab0d2248f89aa23315252802';
 
 app.use(cors());
 
 /* ---------------- NUTZLOS-COMMAND ---------------- */
+
 function generateDailyValue(username) {
     const today = new Date().toISOString().split('T')[0];
     const normalizedUsername = username.toLowerCase();
@@ -32,71 +33,39 @@ app.get('/nutzlos/:username', (req, res) => {
 
 /* ---------------- WETTER-COMMAND ---------------- */
 
-// Stadtname formatieren
+// Stadtname mit großem Anfangsbuchstaben
 function capitalizeCityName(city) {
     if (!city || typeof city !== 'string') return city;
     return city.charAt(0).toUpperCase() + city.slice(1);
 }
 
-// Wetter-Emoji Funktion
+// Wetterbeschreibung + Emojis (Deutsch + Englisch)
 function getWeatherEmoji(description) {
     const text = description.toLowerCase();
-    if (text.includes('klar') || text.includes('sonnig')) return '☀️ Klarer Himmel';
-    if (text.includes('leicht bewölkt')) return '🌤️ Leicht bewölkt';
-    if (text.includes('bewölkt') && !text.includes('stark')) return '🌥️ Bewölkt';
-    if (text.includes('stark bewölkt')) return '☁️ Stark bewölkt';
-    if (text.includes('regen') && !text.includes('gewitter')) return '🌧️ Regen';
-    if (text.includes('nieselregen')) return '🌦️ Nieselregen';
-    if (text.includes('schnee')) return '❄️ Schnee';
-    if (text.includes('neuschnee')) return '❄️ Neuschnee';
-    if (text.includes('schneeregen')) return '🌨️ Schneeregen';
-    if (text.includes('graupel')) return '🌨️ Graupel';
-    if (text.includes('hagel')) return '🌨️ Hagel';
-    if (text.includes('nebel') || text.includes('dunst')) return '🌫️ Nebel';
-    if (text.includes('wind')) return '🌬️ Windig';
-    if (text.includes('sturm') || text.includes('orkan')) return '🌪️ Sturm';
-    if (text.includes('gewitter') || text.includes('blitz')) return '⛈️ Gewitter';
-    if (text.includes('regenbogen')) return '🌈 Regenbogen';
-    return '🌈 Unbekanntes Wetter';
-}
 
-app.get('/weather/:city', async (req, res) => {
-    let city = req.params.city.trim();
-    const displayCity = capitalizeCityName(city);
-    const encodedCity = encodeURIComponent(city);
+    // ☀️ Sonnig / klar
+    if (text.includes('klar') || text.includes('sonnig') || text.includes('clear')) return '☀️ Klarer Himmel';
 
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+    // 🌤️ Leicht bewölkt
+    if (text.includes('leicht bewölkt') || text.includes('partly cloudy')) return '🌤️ Leicht bewölkt';
 
-        const response = await axios.get(
-            `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodedCity}&lang=de`,
-            { signal: controller.signal }
-        );
+    // 🌥️ Bewölkt
+    if (text.includes('bewölkt') || text.includes('cloudy')) return '🌥️ Bewölkt';
 
-        clearTimeout(timeout);
+    // ☁️ Stark bewölkt / Overcast
+    if (text.includes('stark bewölkt') || text.includes('overcast')) return '☁️ Stark bewölkt';
 
-        const weather = response.data.current;
-        const description = weather.condition.text;
-        const tempC = weather.temp_c;
-        const emojiText = getWeatherEmoji(description);
+    // 🌧️ Regen
+    if (text.includes('regen') || text.includes('rain')) return '🌧️ Regen';
 
-        res.send(`Das Wetter in ${displayCity} ist aktuell: ${emojiText} 🌡️ ${tempC}°C`);
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            res.send(`⏳ Oh nein! Die Anfrage für "${displayCity}" hat zu lange gedauert... Versuch’s bitte später nochmal 💫`);
-        } else {
-            res.send(`🤔 Hm... Irgendwas stimmt hier nicht. Bist du sicher, dass "${displayCity}" ein echter Ort ist? 🌍`);
-        }
-    }
-});
+    // 🌦️ Nieselregen
+    if (text.includes('nieselregen') || text.includes('drizzle')) return '🌦️ Nieselregen';
 
-/* ---------------- ROOT ---------------- */
-app.get('/', (req, res) => {
-    res.send('✅ API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT');
-});
+    // ❄️ Schnee
+    if (text.includes('schnee') || text.includes('snow')) return '❄️ Schnee';
 
-/* ---------------- START ---------------- */
-app.listen(port, () => {
-    console.log(`🚀 Server läuft auf Port ${port}`);
-});
+    // 🌨️ Schneeregen / Hagel / Graupel
+    if (text.includes('schneeregen') || text.includes('hail') || text.includes('graupel')) return '🌨️ Schneeregen';
+
+    // 🌫️ Nebel / Dunst / Mist / Fog
+    if (text.includes('nebel') || text.includes('dunst') || text.includes('
