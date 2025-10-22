@@ -32,7 +32,6 @@ app.get('/nutzlos/:username', (req, res) => {
 /* ---------------- STADTNAME NORMALISIEREN ---------------- */
 function normalizeCityName(city) {
     if (!city || typeof city !== 'string') return city;
-
     const map = { 'ae':'ä','oe':'ö','ue':'ü','Ae':'Ä','Oe':'Ö','Ue':'Ü','ss':'ß' };
     let normalized = city;
     for (const [key, value] of Object.entries(map)) {
@@ -49,7 +48,6 @@ function normalizeCityName(city) {
 /* ---------------- WETTER-EMOJIS ---------------- */
 function getWeatherEmoji(description) {
     const text = description.toLowerCase();
-
     const map = [
         { keywords:['klar','sonnig'], emoji:'☀️ Sonnig' },
         { keywords:['leicht bewölkt'], emoji:'🌤️ Leicht bewölkt' },
@@ -87,7 +85,6 @@ function getWeatherEmoji(description) {
     return '';
 }
 
-
 /* ---------------- SYMPATHISCHE FEHLERMELDUNGEN ---------------- */
 function getRandomError(city) {
     const errorMessages = [
@@ -106,30 +103,29 @@ app.get('/weather/:city', async (req,res) => {
     const city = normalizeCityName(rawCity);
 
     try {
-        // 1️⃣ Erde
-        if(!['Mars','Sonne','Pluto','Venus','Jupiter','Saturn'].includes(city)) {
+        // 🌍 Erde
+        if(!['Mars','Sonne','Pluto','Venus','Jupiter','Saturn','Mond'].includes(city)) {
             const encoded = encodeURIComponent(rawCity);
             const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${encoded}&appid=${openWeatherKey}&units=metric&lang=de`);
             const weather = response.data;
             const tempC = Math.round(weather.main.temp);
             const desc = weather.weather[0].description;
             const emoji = getWeatherEmoji(desc);
-            const tempDesc = getTemperatureDescription(tempC);
-            return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji}${emoji?'':' '}, ${tempDesc})`);
+            return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji}${emoji?'':''})`);
         }
 
-        // 2️⃣ Mars
+        // 🔴 Mars über NASA InSight
         if(city==='Mars') {
             const response = await axios.get(`https://api.nasa.gov/insight_weather/?api_key=${nasaKey}&feedtype=json&ver=1.0`);
             const solKeys = response.data.sol_keys;
+            if(!solKeys || solKeys.length===0) return res.send(getRandomError(city));
             const latestSol = solKeys[solKeys.length-1];
-            const tempC = Math.round((response.data[latestSol].AT.av));
+            const tempC = Math.round(response.data[latestSol].AT.av);
             const emoji = '🌬️ Windig';
-            const tempDesc = getTemperatureDescription(tempC);
-            return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji}, ${tempDesc})`);
+            return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji})`);
         }
 
-        // 3️⃣ Sonne / andere Planeten
+        // 🌞 Andere Planeten / Sterne
         let tempC=0, emoji='🌞 Strahlend';
         switch(city) {
             case 'Sonne': tempC=5505; break;
@@ -137,10 +133,10 @@ app.get('/weather/:city', async (req,res) => {
             case 'Venus': tempC=462; emoji='🔥 Heiß'; break;
             case 'Jupiter': tempC=-145; emoji='🥶 Sehr kalt'; break;
             case 'Saturn': tempC=-178; emoji='🥶 Sehr kalt'; break;
+            case 'Mond': tempC=-20; emoji='🌑 Mondig'; break;
             default: return res.send(getRandomError(city));
         }
-        const tempDesc = getTemperatureDescription(tempC);
-        return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji}, ${tempDesc})`);
+        return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji})`);
 
     } catch(err) {
         return res.send(getRandomError(city));
@@ -149,9 +145,8 @@ app.get('/weather/:city', async (req,res) => {
 
 /* ---------------- ROOT ---------------- */
 app.get('/',(req,res)=>{
-    res.send('✅ API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT');
+    res.send('✅ API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT/Planet');
 });
 
 /* ---------------- START ---------------- */
 app.listen(port,()=>console.log(`🚀 Server läuft auf Port ${port}`));
-
