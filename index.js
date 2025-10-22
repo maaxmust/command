@@ -5,148 +5,248 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Keys
-const openWeatherKey = 'c335251d781d377a5c8e9c94e3ea7c10'; // OpenWeatherMap
-const nasaKey = 'ucqtnncar4FshdBUccRh56isBbcIdAmJqpZea5VO'; // NASA
+// keys (wie besprochen)
+const openWeatherKey = 'c335251d781d377a5c8e9c94e3ea7c10';
+const nasaKey = 'ucqtnncar4FshdBUccRh56isBbcIdAmJqpZea5VO';
 
 app.use(cors());
 
-/* ---------------- NUTZLOS-COMMAND ---------------- */
-function generateDailyValue(username) {
-    const today = new Date().toISOString().split('T')[0];
-    const normalizedUsername = username.toLowerCase();
-    const seed = `${normalizedUsername}-${today}`;
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-        hash = (hash << 5) - hash + seed.charCodeAt(i);
-    }
-    return Math.abs(hash % 100) + 1;
-}
-
-app.get('/nutzlos/:username', (req, res) => {
-    const username = req.params.username;
-    const value = generateDailyValue(username);
-    res.send(`${username}, du bist heute zu ${value}% nutzlos 🥸`);
-});
-
-/* ---------------- STADTNAME NORMALISIEREN ---------------- */
+/* ---------------- helpers ---------------- */
 function normalizeCityName(city) {
-    if (!city || typeof city !== 'string') return city;
-    const map = { 'ae':'ä','oe':'ö','ue':'ü','Ae':'Ä','Oe':'Ö','Ue':'Ü','ss':'ß' };
-    let normalized = city;
-    for (const [key, value] of Object.entries(map)) {
-        const regex = new RegExp(key,'g');
-        normalized = normalized.replace(regex,value);
-    }
-    return normalized
-        .trim()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
+  if (!city || typeof city !== 'string') return city;
+  const map = { ae: 'ä', oe: 'ö', ue: 'ü', Ae: 'Ä', Oe: 'Ö', Ue: 'Ü', ss: 'ß' };
+  let normalized = city;
+  for (const [k, v] of Object.entries(map)) {
+    normalized = normalized.replace(new RegExp(k, 'g'), v);
+  }
+  return normalized
+    .trim()
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 }
 
-/* ---------------- WETTER-EMOJIS ---------------- */
-function getWeatherEmoji(description) {
-    const text = description.toLowerCase();
-    const map = [
-        { keywords:['klar','sonnig'], emoji:'☀️ Sonnig' },
-        { keywords:['leicht bewölkt'], emoji:'🌤️ Leicht bewölkt' },
-        { keywords:['bewölkt'], emoji:'🌥️ Bewölkt' },
-        { keywords:['stark bewölkt','überwiegend bewölkt','bedeckt'], emoji:'☁️ Bedeckt' },
-        { keywords:['leichter regen','nieselregen','drizzle'], emoji:'🌦️ Leichter Regen' },
-        { keywords:['moderater regen'], emoji:'🌧️ Mäßiger Regen' },
-        { keywords:['starker regen','heavy intensity rain'], emoji:'🌧️ Starker Regen' },
-        { keywords:['extremer regen','very heavy rain','extreme rain'], emoji:'🌧️ Extrem starker Regen' },
-        { keywords:['gefriereneder regen','freezing rain'], emoji:'🌨️ Gefrierender Regen' },
-        { keywords:['leichter schnee','snow','light snow'], emoji:'❄️ Leichter Schnee' },
-        { keywords:['schnee','snow'], emoji:'❄️ Schnee' },
-        { keywords:['starker schnee','heavy snow'], emoji:'❄️ Starker Schnee' },
-        { keywords:['schneeregen','sleet'], emoji:'🌨️ Schneeregen' },
-        { keywords:['schneeschauer','shower snow'], emoji:'🌨️ Schneeschauer' },
-        { keywords:['gewitter','thunderstorm'], emoji:'⛈️ Gewitter' },
-        { keywords:['leichte gewitter','light thunderstorm'], emoji:'⛈️ Leichtes Gewitter' },
-        { keywords:['nebel','fog','mist','dunst'], emoji:'🌫️ Nebel' },
-        { keywords:['rauch','smoke'], emoji:'💨 Rauch' },
-        { keywords:['sand','sandig'], emoji:'🏜️ Sandig' },
-        { keywords:['staub','dust'], emoji:'💨 Staubig' },
-        { keywords:['vulkanasche','volcanic ash'], emoji:'🌋 Vulkanasche' },
-        { keywords:['böen','squalls'], emoji:'🌬️ Böen' },
-        { keywords:['tornado'], emoji:'🌪️ Tornado' },
-        { keywords:['wind','breeze','gust'], emoji:'🌬️ Windig' },
-        { keywords:['sturm','orkan','storm'], emoji:'🌪️ Sturm' },
-        { keywords:['regenbogen'], emoji:'🌈 Regenbogen' }
-    ];
-
-    for (const item of map) {
-        for (const kw of item.keywords) {
-            if (text.includes(kw)) return item.emoji;
-        }
-    }
-    return '';
-}
-
-/* ---------------- SYMPATHISCHE FEHLERMELDUNGEN ---------------- */
 function getRandomError(city) {
-    const errorMessages = [
-        `🛸 Hm… Irgendwas stimmt nicht mit "${city}", vielleicht ein Tippfehler? 🤔`,
-        `🙃 Ups! Ich finde "${city}" gerade nicht, vielleicht ein Tippfehler? 🤔`,
-        `😅 Oh nein, "${city}" existiert nicht… vielleicht falsch geschrieben?`,
-        `🤖 Hm… "${city}" will mir keine Daten geben. Noch ein Versuch?`,
-        `🤷‍♂️ Hm, "${city}" scheint nicht zu existieren. Vielleicht ein Tippfehler?`
-    ];
-    return errorMessages[Math.floor(Math.random()*errorMessages.length)];
+  const msgs = [
+    `🛸 Hm… Irgendwas stimmt nicht mit "${city}", vielleicht ein Tippfehler? 🤔`,
+    `🙃 Ups! Ich finde "${city}" gerade nicht – vielleicht anders schreiben?`,
+    `😅 Oh nein, "${city}" existiert nicht… vielleicht falsch geschrieben?`,
+    `🤖 "${city}" will mir keine Daten geben. Versuch’s nochmal.`,
+    `🤷‍♂️ "${city}" scheint nicht zu existieren. Vielleicht ein Tippfehler?`
+  ];
+  return msgs[Math.floor(Math.random() * msgs.length)];
 }
 
-/* ---------------- WEATHER COMMAND ---------------- */
-app.get('/weather/:city', async (req,res) => {
-    const rawCity = req.params.city;
-    const city = normalizeCityName(rawCity);
+/* ---------------- sehr vollständige Wetterbeschreibungen (DE + englische Varianten) ----------------
+   Quelle: häufige OpenWeatherMap description-strings + Varianten
+   (Wir prüfen description.toLowerCase() auf diese keywords)
+*/
+function getWeatherEmoji(description) {
+  if (!description) return '';
+  const t = description.toLowerCase();
 
-    try {
-        // 🌍 Erde
-        if(!['Mars','Sonne','Pluto','Venus','Jupiter','Saturn','Mond'].includes(city)) {
-            const encoded = encodeURIComponent(rawCity);
-            const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${encoded}&appid=${openWeatherKey}&units=metric&lang=de`);
-            const weather = response.data;
-            const tempC = Math.round(weather.main.temp);
-            const desc = weather.weather[0].description;
-            const emoji = getWeatherEmoji(desc);
-            return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji}${emoji?'':''})`);
-        }
+  const map = [
+    // Klar / Sonne
+    { kw: ['klarer himmel', 'clear sky', 'klar', 'sonnig', 'sunny'], emoji: '☀️ Sonnig' },
+    // Wolken - feine Abstufungen
+    { kw: ['few clouds', 'light clouds', 'leicht bewölkt'], emoji: '🌤️ Leicht bewölkt' },
+    { kw: ['scattered clouds', 'scattered cloud', 'vereinzelt wolken', 'wolkenfelder'], emoji: '🌥️ Vereinzelte Wolken' },
+    { kw: ['broken clouds', 'broken cloud', 'gebrochene wolken'], emoji: '☁️ Stark bewölkt' },
+    { kw: ['overcast clouds', 'overcast', 'bedeckt', 'überwiegend bewölkt'], emoji: '☁️ Bedeckt' },
 
-        // 🔴 Mars über NASA InSight
-        if(city==='Mars') {
-            const response = await axios.get(`https://api.nasa.gov/insight_weather/?api_key=${nasaKey}&feedtype=json&ver=1.0`);
-            const solKeys = response.data.sol_keys;
-            if(!solKeys || solKeys.length===0) return res.send(getRandomError(city));
-            const latestSol = solKeys[solKeys.length-1];
-            const tempC = Math.round(response.data[latestSol].AT.av);
-            const emoji = '🌬️ Windig';
-            return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji})`);
-        }
+    // Regen / Schauer - fein
+    { kw: ['light intensity shower rain', 'light shower rain', 'leichter schauer', 'light shower'], emoji: '🌦️ Leichter Schauer' },
+    { kw: ['shower rain', 'shower'], emoji: '🌧️ Schauerregen' },
+    { kw: ['ragged shower rain', 'unregelmäßiger schauer', 'ragged shower'], emoji: '🌧️ Unregelmäßiger Schauer' },
+    { kw: ['light rain', 'leichter regen'], emoji: '🌦️ Leichter Regen' },
+    { kw: ['moderate rain', 'mäßiger regen'], emoji: '🌧️ Mäßiger Regen' },
+    { kw: ['heavy intensity rain', 'heavy rain', 'starker regen'], emoji: '🌧️ Starker Regen' },
+    { kw: ['very heavy rain', 'very heavy intensity rain', 'sehr starker regen'], emoji: '🌧️ Sehr starker Regen' },
+    { kw: ['extreme rain', 'extreme'], emoji: '🌧️ Extrem starker Regen' },
+    { kw: ['freezing rain', 'gefriereneder regen'], emoji: '🌨️ Gefrierender Regen' },
+    { kw: ['drizzle', 'nieselregen'], emoji: '🌦️ Nieselregen' },
 
-        // 🌞 Andere Planeten / Sterne
-        let tempC=0, emoji='🌞 Strahlend';
-        switch(city) {
-            case 'Sonne': tempC=5505; break;
-            case 'Pluto': tempC=-229; emoji='❄️ Frostig'; break;
-            case 'Venus': tempC=462; emoji='🔥 Heiß'; break;
-            case 'Jupiter': tempC=-145; emoji='🥶 Sehr kalt'; break;
-            case 'Saturn': tempC=-178; emoji='🥶 Sehr kalt'; break;
-            case 'Mond': tempC=-20; emoji='🌑 Mondig'; break;
-            default: return res.send(getRandomError(city));
-        }
-        return res.send(`In ${city} ist es aktuell ${tempC}°C (${emoji})`);
+    // Schnee
+    { kw: ['light snow', 'leichter schnee'], emoji: '❄️ Leichter Schnee' },
+    { kw: ['snow', 'schnee'], emoji: '❄️ Schnee' },
+    { kw: ['heavy snow', 'starker schnee'], emoji: '❄️ Starker Schnee' },
+    { kw: ['sleet', 'schneeregen'], emoji: '🌨️ Schneeregen' },
+    { kw: ['shower snow', 'schneeschauer'], emoji: '🌨️ Schneeschauer' },
 
-    } catch(err) {
-        return res.send(getRandomError(city));
+    // Gewitter & Blitz
+    { kw: ['thunderstorm with light rain', 'gewitter mit leichtem regen'], emoji: '⛈️ Gewitter mit leichtem Regen' },
+    { kw: ['thunderstorm with rain', 'gewitter mit regen'], emoji: '⛈️ Gewitter mit Regen' },
+    { kw: ['thunderstorm with heavy rain', 'gewitter mit starkem regen'], emoji: '⛈️ Gewitter mit starkem Regen' },
+    { kw: ['light thunderstorm', 'leichtes gewitter'], emoji: '⛈️ Leichtes Gewitter' },
+    { kw: ['thunderstorm', 'gewitter'], emoji: '⛈️ Gewitter' },
+    { kw: ['heavy thunderstorm', 'starkes gewitter'], emoji: '⛈️ Starkes Gewitter' },
+    { kw: ['ragged thunderstorm', 'unregelmäßiges gewitter'], emoji: '⛈️ Unregelmäßiges Gewitter' },
+
+    // Nebel / Dunst
+    { kw: ['mist', 'nebel', 'dunst', 'fog', 'haze'], emoji: '🌫️ Nebel' },
+
+    // Sand / Staub / Rauch
+    { kw: ['sand', 'sand/dust', 'staub', 'dust'], emoji: '🏜️ Sandig' },
+    { kw: ['smoke', 'rauch'], emoji: '💨 Rauchig' },
+    { kw: ['volcanic ash', 'vulkanasche'], emoji: '🌋 Vulkanasche' },
+
+    // Wind / Stürme
+    { kw: ['squalls', 'böen'], emoji: '🌬️ Böen' },
+    { kw: ['wind', 'breeze', 'gust', 'windig'], emoji: '🌬️ Windig' },
+    { kw: ['tornado'], emoji: '🌪️ Tornado' },
+    { kw: ['storm', 'sturm', 'orkan'], emoji: '🌪️ Sturm' },
+
+    // Sonstiges
+    { kw: ['clear', 'sun'], emoji: '☀️ Sonnig' },
+    { kw: ['rainbow', 'regenbogen'], emoji: '🌈 Regenbogen' }
+  ];
+
+  for (const item of map) {
+    for (const kw of item.kw) {
+      if (t.includes(kw)) return item.emoji;
     }
+  }
+  return '';
+}
+
+/* ---------------- Exoplanet / NASA-Archiv Abfrage ----------------
+   Wir verwenden das NASA Exoplanet Archive (IPAC) REST-API (table=exoplanets)
+   Query Beispiel liefert JSON mit Feldern wie pl_eqt (equilibrium temp in K)
+*/
+async function queryExoplanetArchive(name) {
+  try {
+    // table=exoplanets, where pl_name='Name'
+    const url = `https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=exoplanets&format=json&where=pl_name='${encodeURIComponent(name)}'`;
+    const resp = await axios.get(url, { timeout: 7000 });
+    if (!resp.data || resp.data.length === 0) return null;
+    return resp.data[0]; // first match
+  } catch (e) {
+    return null;
+  }
+}
+
+/* ---------------- Mars (NASA InSight) ---------------- */
+async function queryMarsInsight() {
+  try {
+    const resp = await axios.get(`https://api.nasa.gov/insight_weather/?api_key=${nasaKey}&feedtype=json&ver=1.0`, { timeout: 7000 });
+    if (!resp.data || !resp.data.sol_keys || resp.data.sol_keys.length === 0) return null;
+    const latest = resp.data.sol_keys[resp.data.sol_keys.length - 1];
+    const solData = resp.data[latest];
+    if (!solData || !solData.AT || typeof solData.AT.av !== 'number') return null;
+    return Math.round(solData.AT.av); // °C already
+  } catch (e) {
+    return null;
+  }
+}
+
+/* ---------------- weather endpoint (master) ---------------- */
+app.get('/weather/:place', async (req, res) => {
+  const raw = req.params.place;
+  const place = normalizeCityName(raw);
+
+  // helper to send with optional weatherPart
+  function sendTemp(placeOut, tempC, emojiStr) {
+    const part = emojiStr ? ` (${emojiStr})` : '';
+    return res.send(`In ${placeOut} ist es aktuell ${tempC}°C${part}`);
+  }
+
+  try {
+    // 1) Erde - OpenWeatherMap (try)
+    // if the place is clearly a solar object by name we'll treat later; otherwise check OpenWeather first
+    const solarNames = new Set(['Mars','Sonne','Pluto','Venus','Jupiter','Saturn','Merkur','Uranus','Neptun','Mond','Sirius','Betelgeuse','Alpha Centauri','Milchstraße','Schwarzes Loch']);
+    if (!solarNames.has(place)) {
+      // use AbortController + timeout safe pattern
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        const encoded = encodeURIComponent(raw);
+        const ow = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${encoded}&appid=${openWeatherKey}&units=metric&lang=de`, { signal: controller.signal });
+        clearTimeout(timeout);
+
+        const weather = ow.data;
+        const tempC = Math.round(weather.main.temp);
+        const desc = weather.weather?.[0]?.description || '';
+        const emoji = getWeatherEmoji(desc);
+
+        return sendTemp(place, tempC, emoji);
+      } catch (err) {
+        clearTimeout(timeout);
+        // if OpenWeather fails due to not found (404) we fallback to next steps (exoplanet / solar bodies)
+        // for other errors also try next steps (so we don't immediately error)
+      }
+    }
+
+    // 2) Mars via NASA InSight
+    if (place === 'Mars') {
+      const marsTemp = await queryMarsInsight();
+      if (marsTemp !== null) return sendTemp('Mars', marsTemp, '🌬️ Windig');
+      // fallback: if no data from INSIGHT, show friendly error
+      return res.send(getRandomError(place));
+    }
+
+    // 3) Known solar system / stars (try exoplanet archive for exoplanets/stars)
+    // First try Exoplanet Archive (for exoplanets / star names) - query with raw string as provided
+    const exo = await queryExoplanetArchive(raw);
+    if (exo) {
+      // pl_eqt is equilibrium temperature in K in many tables (may be null)
+      // try several common fields
+      const maybeFields = ['pl_eqt', 'pl_orbeccen', 'pl_orbeccen']; // pl_eqt is main
+      if (typeof exo.pl_eqt === 'number') {
+        const tempC = Math.round(exo.pl_eqt - 273.15);
+        // Use a neutral cosmic emoji
+        return sendTemp(exo.pl_name || place, tempC, '🌌');
+      }
+      // If exoplanet exists but no temp, still return a friendly message
+      // but per your request, we should keep same representation only when data exists
+      // so if no pl_eqt, we continue to check built-in solar table below
+    }
+
+    // 4) Built-in planetary/stars fallback table (only if we have known data)
+    const builtin = {
+      'Sonne': { temp: 5505, emoji: '☀️ Strahlend' },     // effective temp of Sun photosphere
+      'Merkur': { temp: 167, emoji: '🔥 Heiß' },
+      'Venus': { temp: 464, emoji: '🔥 Glühend' },
+      'Erde': { temp: 15, emoji: '🌍' },
+      'Mond': { temp: -53, emoji: '🌕' },
+      'Jupiter': { temp: -145, emoji: '🥶' },
+      'Saturn': { temp: -178, emoji: '🥶' },
+      'Uranus': { temp: -224, emoji: '❄️' },
+      'Neptun': { temp: -214, emoji: '❄️' },
+      'Pluto': { temp: -229, emoji: '🧊' },
+      'Schwarzes Loch': { temp: 0, emoji: '🕳️ Unendlich dunkel' },
+      'Sirius': { temp: 9940, emoji: '🌟 Gleißend hell' },
+      'Betelgeuse': { temp: 3500, emoji: '🌟 Roter Riese' },
+      'Alpha Centauri': { temp: 5790, emoji: '✨ Sonnengleich' },
+      'Milchstraße': { temp: -270, emoji: '🌌 Kosmisch kalt' }
+    };
+
+    if (builtin[place]) {
+      const obj = builtin[place];
+      return sendTemp(place, obj.temp, obj.emoji);
+    }
+
+    // 5) If we got here and nothing matched, final fallback: try OpenWeather with raw again but without normalization
+    try {
+      const encoded2 = encodeURIComponent(raw);
+      const resp2 = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${encoded2}&appid=${openWeatherKey}&units=metric&lang=de`, { timeout: 5000 });
+      const tempC = Math.round(resp2.data.main.temp);
+      const desc = resp2.data.weather?.[0]?.description || '';
+      const emoji = getWeatherEmoji(desc);
+      return sendTemp(raw, tempC, emoji);
+    } catch (e) {
+      // nothing found: friendly error
+      return res.send(getRandomError(place));
+    }
+
+  } catch (err) {
+    return res.send(getRandomError(place));
+  }
 });
 
-/* ---------------- ROOT ---------------- */
-app.get('/',(req,res)=>{
-    res.send('✅ API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT/Planet');
+/* ---------------- root ---------------- */
+app.get('/', (req, res) => {
+  res.send('✅ API läuft! Verwende /weather/STADT oder /weather/PLANET oder /weather/ExoplanetName');
 });
 
-/* ---------------- START ---------------- */
-app.listen(port,()=>console.log(`🚀 Server läuft auf Port ${port}`));
+/* ---------------- start ---------------- */
+app.listen(port, () => console.log(`🚀 Server läuft auf Port ${port}`));
