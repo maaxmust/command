@@ -203,21 +203,25 @@ app.get('/weather/:place', async (req, res) => {
 
     // 4) Built-in planetary/stars fallback table (only if we have known data)
     const builtin = {
-      'Sonne': { temp: 5505, emoji: '☀️ Strahlend' },     // effective temp of Sun photosphere
-      'Merkur': { temp: 167, emoji: '🔥 Heiß' },
-      'Venus': { temp: 464, emoji: '🔥 Glühend' },
-      'Erde': { temp: 15, emoji: '🌍' },
-      'Mond': { temp: -53, emoji: '🌕' },
-      'Jupiter': { temp: -145, emoji: '🥶' },
-      'Saturn': { temp: -178, emoji: '🥶' },
-      'Uranus': { temp: -224, emoji: '❄️' },
-      'Neptun': { temp: -214, emoji: '❄️' },
-      'Pluto': { temp: -229, emoji: '🧊' },
-      'Schwarzes Loch': { temp: 0, emoji: '🕳️ Unendlich dunkel' },
-      'Sirius': { temp: 9940, emoji: '🌟 Gleißend hell' },
-      'Betelgeuse': { temp: 3500, emoji: '🌟 Roter Riese' },
-      'Alpha Centauri': { temp: 5790, emoji: '✨ Sonnengleich' },
-      'Milchstraße': { temp: -270, emoji: '🌌 Kosmisch kalt' }
+    'Sonne': { temp: 5505, emoji: '☀️ Strahlend' },
+    'Merkur': { temp: 167, emoji: '🔥 Glühend' },
+    'Venus': { temp: 464, emoji: '🔥 Hitzeschock' },
+    'Erde': { temp: 15, emoji: '🌍 Ausgeglichen' },
+    'Mond': { temp: -53, emoji: '🌕 Mondklar' },
+    'Mars': { temp: -63, emoji: '🌬️ Staubig' },
+    'Jupiter': { temp: -145, emoji: '💨 Sturmreich' },
+    'Saturn': { temp: -178, emoji: '💨 Windig' },
+    'Uranus': { temp: -224, emoji: '❄️ Eisig' },
+    'Neptun': { temp: -214, emoji: '🌊 Frostig' },
+    'Pluto': { temp: -229, emoji: '🧊 Tiefgefroren' },
+    'Schwarzes Loch': { temp: 0, emoji: '🕳️ Unendlich dunkel' },
+    'Sirius': { temp: 9940, emoji: '🌟 Gleißend hell' },
+    'Betelgeuse': { temp: 3500, emoji: '🌟 Glühend rot' },
+    'Alpha Centauri': { temp: 5790, emoji: '✨ Sonnengleich' },
+    'Milchstraße': { temp: -270, emoji: '🌌 Kosmisch kalt' },
+    'Andromeda': { temp: -271, emoji: '🌌 Fern und frostig' },
+    'Exoplanet Kepler-452b': { temp: 265, emoji: '🪐 Mild' },
+    'Proxima Centauri b': { temp: -39, emoji: '🌫️ Kalt und fern' }
     };
 
     if (builtin[place]) {
@@ -250,3 +254,4 @@ app.get('/', (req, res) => {
 
 /* ---------------- start ---------------- */
 app.listen(port, () => console.log(`🚀 Server läuft auf Port ${port}`));
+
