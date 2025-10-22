@@ -1,10 +1,12 @@
 {
-  "name": "nutzenlos-api",
+  "name": "multi-api",
   "version": "1.0.0",
-  "description": "Eine einfache API, die den Zufallswert für einen User berechnet",
+  "description": "Kombinierte API: Nutzlos-Wert & Wetter",
   "main": "index.js",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "axios": "^1.4.0",
+    "cors": "^2.8.5"
   },
   "scripts": {
     "start": "node index.js"
