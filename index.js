@@ -11,6 +11,24 @@ const nasaKey = 'ucqtnncar4FshdBUccRh56isBbcIdAmJqpZea5VO';
 
 app.use(cors());
 
+/* ---------------- NUTZLOS-COMMAND ---------------- */
+function generateDailyValue(username) {
+  const today = new Date().toISOString().split('T')[0];
+  const normalizedUsername = username.toLowerCase();
+  const seed = `${normalizedUsername}-${today}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+  }
+  return Math.abs(hash % 100) + 1;
+}
+
+app.get('/nutzlos/:username', (req, res) => {
+  const username = req.params.username;
+  const value = generateDailyValue(username);
+  res.send(`${username}, du bist heute zu ${value}% nutzlos 🥸`);
+});
+
 /* ---------------- helpers ---------------- */
 function normalizeCityName(city) {
   if (!city || typeof city !== 'string') return city;
@@ -214,7 +232,7 @@ app.get('/weather/:place', async (req, res) => {
     'Uranus': { temp: -224, emoji: '❄️ Eisig' },
     'Neptun': { temp: -214, emoji: '🌊 Frostig' },
     'Pluto': { temp: -229, emoji: '🧊 Tiefgefroren' },
-    'Schwarzes Loch': { temp: 0, emoji: '🕳️ Unendlich dunkel' },
+    'SchwarzesLoch': { temp: 0, emoji: '🕳️ Unendlich dunkel' },
     'Sirius': { temp: 9940, emoji: '🌟 Gleißend hell' },
     'Betelgeuse': { temp: 3500, emoji: '🌟 Glühend rot' },
     'Alpha Centauri': { temp: 5790, emoji: '✨ Sonnengleich' },
@@ -254,4 +272,5 @@ app.get('/', (req, res) => {
 
 /* ---------------- start ---------------- */
 app.listen(port, () => console.log(`🚀 Server läuft auf Port ${port}`));
+
 
