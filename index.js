@@ -87,18 +87,6 @@ function getWeatherEmoji(description) {
     return '';
 }
 
-/* ---------------- TEMPERATUR-BESCHREIBUNG ---------------- */
-function getTemperatureDescription(tempC) {
-    if (tempC >= 35) return '🥵 Sehr heiß';
-    if (tempC >= 30) return '🔥 Heiß';
-    if (tempC >= 25) return '🌞 Warm';
-    if (tempC >= 20) return '😎 Angenehm';
-    if (tempC >= 15) return '🌤️ Mild';
-    if (tempC >= 10) return '🧥 Frisch';
-    if (tempC >= 5) return '🧊 Kühl';
-    if (tempC >= 0) return '❄️ Kalt';
-    return '🥶 Sehr kalt';
-}
 
 /* ---------------- SYMPATHISCHE FEHLERMELDUNGEN ---------------- */
 function getRandomError(city) {
@@ -166,3 +154,4 @@ app.get('/',(req,res)=>{
 
 /* ---------------- START ---------------- */
 app.listen(port,()=>console.log(`🚀 Server läuft auf Port ${port}`));
+
