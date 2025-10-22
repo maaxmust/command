@@ -4,12 +4,13 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const apiKey = '9f2a7dab0d2248f89aa23315252802'; // Dein Key direkt im Code
+
+// Dein Wetter-API-Key
+const apiKey = '9f2a7dab0d2248f89aa23315252802';
 
 app.use(cors());
 
-/* ---------------- Nutzlos-API ---------------- */
-
+/* ---------------- NUTZLOS-COMMAND ---------------- */
 function generateDailyValue(username) {
     const today = new Date().toISOString().split('T')[0];
     const normalizedUsername = username.toLowerCase();
@@ -26,17 +27,23 @@ function generateDailyValue(username) {
 app.get('/nutzlos/:username', (req, res) => {
     const username = req.params.username;
     const value = generateDailyValue(username);
-    res.send(`${username}, du bist heute zu ${value}% nutzlos`);
+    res.send(`${username}, du bist heute zu ${value}% nutzlos 😜`);
 });
 
-/* ---------------- Wetter-API ---------------- */
+/* ---------------- WETTER-COMMAND ---------------- */
 
+// Stadtname formatieren
+function capitalizeCityName(city) {
+    if (!city || typeof city !== 'string') return city;
+    return city.charAt(0).toUpperCase() + city.slice(1);
+}
+
+// Wetter-Emoji Funktion
 function getWeatherEmoji(description) {
     const text = description.toLowerCase();
-
     if (text.includes('klar') || text.includes('sonnig')) return '☀️ Klarer Himmel';
     if (text.includes('leicht bewölkt')) return '🌤️ Leicht bewölkt';
-    if (text.includes('bewölkt')) return '🌥️ Bewölkt';
+    if (text.includes('bewölkt') && !text.includes('stark')) return '🌥️ Bewölkt';
     if (text.includes('stark bewölkt')) return '☁️ Stark bewölkt';
     if (text.includes('regen') && !text.includes('gewitter')) return '🌧️ Regen';
     if (text.includes('nieselregen')) return '🌦️ Nieselregen';
@@ -50,20 +57,20 @@ function getWeatherEmoji(description) {
     if (text.includes('sturm') || text.includes('orkan')) return '🌪️ Sturm';
     if (text.includes('gewitter') || text.includes('blitz')) return '⛈️ Gewitter';
     if (text.includes('regenbogen')) return '🌈 Regenbogen';
-
     return '🌈 Unbekanntes Wetter';
 }
 
 app.get('/weather/:city', async (req, res) => {
-    // URL-encode die Stadt, damit Umlaute und Sonderzeichen funktionieren
-    const city = encodeURIComponent(req.params.city);
+    let city = req.params.city.trim();
+    const displayCity = capitalizeCityName(city);
+    const encodedCity = encodeURIComponent(city);
 
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
 
         const response = await axios.get(
-            `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&lang=de`,
+            `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodedCity}&lang=de`,
             { signal: controller.signal }
         );
 
@@ -71,26 +78,25 @@ app.get('/weather/:city', async (req, res) => {
 
         const weather = response.data.current;
         const description = weather.condition.text;
+        const tempC = weather.temp_c;
         const emojiText = getWeatherEmoji(description);
 
-        res.send(`Das Wetter in ${req.params.city} ist aktuell: ${emojiText}`);
+        res.send(`Das Wetter in ${displayCity} ist aktuell: ${emojiText} 🌡️ ${tempC}°C`);
     } catch (error) {
         if (error.name === 'AbortError') {
-            res.send(`⏳ Die Wetteranfrage für ${req.params.city} hat zu lange gedauert. Bitte versuche es später erneut.`);
+            res.send(`⏳ Oh nein! Die Anfrage für "${displayCity}" hat zu lange gedauert... Versuch’s bitte später nochmal 💫`);
         } else {
-            res.send(`⚠️ Fehler beim Abrufen des Wetters für ${req.params.city}. Bitte überprüfe die Stadt.`);
+            res.send(`🤔 Hm... Irgendwas stimmt hier nicht. Bist du sicher, dass "${displayCity}" ein echter Ort ist? 🌍`);
         }
     }
 });
 
-/* ---------------- Root-Route ---------------- */
-
+/* ---------------- ROOT ---------------- */
 app.get('/', (req, res) => {
-    res.send('API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT');
+    res.send('✅ API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT');
 });
 
-/* ---------------- Server starten ---------------- */
-
+/* ---------------- START ---------------- */
 app.listen(port, () => {
-    console.log(`🌍 Server läuft auf Port ${port}`);
+    console.log(`🚀 Server läuft auf Port ${port}`);
 });
