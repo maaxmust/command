@@ -4,9 +4,7 @@ const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-// Dein Wetter-API-Key direkt im Code
-const apiKey = '9f2a7dab0d2248f89aa23315252802';
+const apiKey = '9f2a7dab0d2248f89aa23315252802'; // Wetter-API-Key direkt im Code
 
 app.use(cors());
 
@@ -27,19 +25,37 @@ function generateDailyValue(username) {
 app.get('/nutzlos/:username', (req, res) => {
     const username = req.params.username;
     const value = generateDailyValue(username);
-    res.send(`${username}, du bist heute zu ${value}% nutzlos 😜`);
+    res.send(`${username}, du bist heute zu ${value}% nutzlos 🥸`);
 });
 
 /* ---------------- WETTER-COMMAND ---------------- */
-
-// Stadtname: nur erster Buchstabe groß, Rest unverändert
-function capitalizeCityName(city) {
+// Großschreibt jedes Wort + korrigiert deutsche Umlaute
+function normalizeCityName(city) {
     if (!city || typeof city !== 'string') return city;
-    city = city.trim();
-    return city.charAt(0).toUpperCase() + city.slice(1);
+
+    const map = {
+        'ae': 'ä',
+        'oe': 'ö',
+        'ue': 'ü',
+        'Ae': 'Ä',
+        'Oe': 'Ö',
+        'Ue': 'Ü',
+        'ss': 'ß'
+    };
+
+    let normalized = city;
+    for (const [key, value] of Object.entries(map)) {
+        const regex = new RegExp(key, 'g');
+        normalized = normalized.replace(regex, value);
+    }
+
+    return normalized
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
 }
 
-// Wetterbeschreibung + Emojis (Deutsch + Englisch)
 function getWeatherEmoji(description) {
     const text = description.toLowerCase();
 
@@ -48,29 +64,43 @@ function getWeatherEmoji(description) {
     if ((text.includes('bewölkt') && !text.includes('stark')) || text.includes('cloudy')) return '🌥️ Bewölkt';
     if (text.includes('stark bewölkt') || text.includes('overcast')) return '☁️ Stark bewölkt';
     if (text.includes('bedeckt')) return '☁️ Bedeckt';
+    if (text.includes('nebel') || text.includes('dunst') || text.includes('fog') || text.includes('mist')) return '🌫️ Nebel';
+    
     if (text.includes('regen') && !text.includes('gewitter')) return '🌧️ Regen';
     if (text.includes('nieselregen') || text.includes('drizzle')) return '🌦️ Nieselregen';
-    if (text.includes('schnee') || text.includes('snow')) return '❄️ Schnee';
-    if (text.includes('neuschnee')) return '❄️ Neuschnee';
-    if (text.includes('schneeregen') || text.includes('hail') || text.includes('graupel')) return '🌨️ Schneeregen';
-    if (text.includes('nebel') || text.includes('dunst') || text.includes('fog') || text.includes('mist')) return '🌫️ Nebel';
+    if (text.includes('schneeregen') || text.includes('graupel') || text.includes('hail')) return '🌨️ Schneeregen';
+    
+    if (text.includes('schnee') || text.includes('neuschnee') || text.includes('snow')) return '❄️ Schnee';
+    
+    if (text.includes('gewitter') || text.includes('blitz') || text.includes('thunder')) return '⛈️ Gewitter';
+    
     if (text.includes('wind') || text.includes('breeze') || text.includes('gust')) return '🌬️ Windig';
     if (text.includes('sturm') || text.includes('orkan') || text.includes('storm')) return '🌪️ Sturm';
-    if (text.includes('gewitter') || text.includes('thunder') || text.includes('blitz')) return '⛈️ Gewitter';
+    
     if (text.includes('regenbogen')) return '🌈 Regenbogen';
 
     return '🌈 Unbekanntes Wetter';
 }
 
-// Wenn jemand /weather ohne Stadt eingibt
+// Sympathische Fehlertexte
+function getRandomError(city) {
+    const errorMessages = [
+        `🛸 Hm… Irgendwas stimmt nicht mit ${city}, vielleicht ein Tippfehler? 🤔`,
+        `🙃 Ups! Ich finde ${city} gerade nicht, vielleicht ein Tippfehler? 🤔`,
+        `😅 Oh nein, ${city} existiert nicht… vielleicht falsch geschrieben?`,
+        `🤖 Hm… ${city} will mir keine Wetterdaten geben. Noch ein Versuch?`,
+        `🤷‍♂️ Hm, ${city} scheint nicht zu existieren. Vielleicht ein Tippfehler?`
+    ];
+    return errorMessages[Math.floor(Math.random() * errorMessages.length)];
+}
+
 app.get('/weather', (req, res) => {
-    res.send('Bitte gib eine Stadt an, z. B. /weather/Berlin ☀️');
+    res.send('Bitte gib eine Stadt an, z. B. /weather/Berlin');
 });
 
-// Haupt-Wetterroute
 app.get('/weather/:city', async (req, res) => {
     const rawCity = req.params.city;
-    const displayCity = capitalizeCityName(rawCity);
+    const displayCity = normalizeCityName(rawCity);
     const encodedCity = encodeURIComponent(rawCity);
 
     try {
@@ -89,13 +119,10 @@ app.get('/weather/:city', async (req, res) => {
         const tempC = weather.temp_c;
         const emojiText = getWeatherEmoji(description);
 
-        res.send(`In ${displayCity} ist es aktuell ${tempC}°C ${emojiText}`);
+        res.send(`In ${displayCity} ist es aktuell ${tempC}°C (${emojiText})`);
     } catch (error) {
-        if (error.name === 'AbortError') {
-            res.send(`⏳ Oh nein! Die Anfrage für ${displayCity} hat zu lange gedauert... Versuch’s bitte später nochmal 💫`);
-        } else {
-            res.send(`🤔 Hm... Ist da vielleicht ein Fehler? Bitte überprüfe die Stadt ${displayCity} 🌍`);
-        }
+        clearTimeout(timeout);
+        res.send(getRandomError(displayCity));
     }
 });
 
