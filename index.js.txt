@@ -5,13 +5,12 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Dein Wetter-API-Key (direkt im Code)
+// Dein Wetter-API-Key direkt im Code
 const apiKey = '9f2a7dab0d2248f89aa23315252802';
 
 app.use(cors());
 
 /* ---------------- NUTZLOS-COMMAND ---------------- */
-
 function generateDailyValue(username) {
     const today = new Date().toISOString().split('T')[0];
     const normalizedUsername = username.toLowerCase();
@@ -33,9 +32,10 @@ app.get('/nutzlos/:username', (req, res) => {
 
 /* ---------------- WETTER-COMMAND ---------------- */
 
-// Stadtname mit großem Anfangsbuchstaben
+// Stadtname: nur erster Buchstabe groß, Rest unverändert
 function capitalizeCityName(city) {
     if (!city || typeof city !== 'string') return city;
+    city = city.trim();
     return city.charAt(0).toUpperCase() + city.slice(1);
 }
 
@@ -43,29 +43,68 @@ function capitalizeCityName(city) {
 function getWeatherEmoji(description) {
     const text = description.toLowerCase();
 
-    // ☀️ Sonnig / klar
     if (text.includes('klar') || text.includes('sonnig') || text.includes('clear')) return '☀️ Klarer Himmel';
-
-    // 🌤️ Leicht bewölkt
     if (text.includes('leicht bewölkt') || text.includes('partly cloudy')) return '🌤️ Leicht bewölkt';
-
-    // 🌥️ Bewölkt
-    if (text.includes('bewölkt') || text.includes('cloudy')) return '🌥️ Bewölkt';
-
-    // ☁️ Stark bewölkt / Overcast
+    if ((text.includes('bewölkt') && !text.includes('stark')) || text.includes('cloudy')) return '🌥️ Bewölkt';
     if (text.includes('stark bewölkt') || text.includes('overcast')) return '☁️ Stark bewölkt';
-
-    // 🌧️ Regen
-    if (text.includes('regen') || text.includes('rain')) return '🌧️ Regen';
-
-    // 🌦️ Nieselregen
+    if (text.includes('bedeckt')) return '☁️ Bedeckt';
+    if (text.includes('regen') && !text.includes('gewitter')) return '🌧️ Regen';
     if (text.includes('nieselregen') || text.includes('drizzle')) return '🌦️ Nieselregen';
-
-    // ❄️ Schnee
     if (text.includes('schnee') || text.includes('snow')) return '❄️ Schnee';
-
-    // 🌨️ Schneeregen / Hagel / Graupel
+    if (text.includes('neuschnee')) return '❄️ Neuschnee';
     if (text.includes('schneeregen') || text.includes('hail') || text.includes('graupel')) return '🌨️ Schneeregen';
+    if (text.includes('nebel') || text.includes('dunst') || text.includes('fog') || text.includes('mist')) return '🌫️ Nebel';
+    if (text.includes('wind') || text.includes('breeze') || text.includes('gust')) return '🌬️ Windig';
+    if (text.includes('sturm') || text.includes('orkan') || text.includes('storm')) return '🌪️ Sturm';
+    if (text.includes('gewitter') || text.includes('thunder') || text.includes('blitz')) return '⛈️ Gewitter';
+    if (text.includes('regenbogen')) return '🌈 Regenbogen';
 
-    // 🌫️ Nebel / Dunst / Mist / Fog
-    if (text.includes('nebel') || text.includes('dunst') || text.includes('
+    return '🌈 Unbekanntes Wetter';
+}
+
+// Wenn jemand /weather ohne Stadt eingibt
+app.get('/weather', (req, res) => {
+    res.send('Bitte gib eine Stadt an, z. B. /weather/Berlin ☀️');
+});
+
+// Haupt-Wetterroute
+app.get('/weather/:city', async (req, res) => {
+    const rawCity = req.params.city;
+    const displayCity = capitalizeCityName(rawCity);
+    const encodedCity = encodeURIComponent(rawCity);
+
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const response = await axios.get(
+            `http://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${encodedCity}&lang=de`,
+            { signal: controller.signal }
+        );
+
+        clearTimeout(timeout);
+
+        const weather = response.data.current;
+        const description = weather.condition.text;
+        const tempC = weather.temp_c;
+        const emojiText = getWeatherEmoji(description);
+
+        res.send(`In ${displayCity} ist es aktuell ${tempC}°C ${emojiText}`);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            res.send(`⏳ Oh nein! Die Anfrage für ${displayCity} hat zu lange gedauert... Versuch’s bitte später nochmal 💫`);
+        } else {
+            res.send(`🤔 Hm... Ist da vielleicht ein Fehler? Bitte überprüfe die Stadt ${displayCity} 🌍`);
+        }
+    }
+});
+
+/* ---------------- ROOT ---------------- */
+app.get('/', (req, res) => {
+    res.send('✅ API läuft! Verwende /nutzlos/DEIN_NAME oder /weather/STADT');
+});
+
+/* ---------------- START ---------------- */
+app.listen(port, () => {
+    console.log(`🚀 Server läuft auf Port ${port}`);
+});
